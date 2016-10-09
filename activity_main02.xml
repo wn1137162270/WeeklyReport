@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="service.imooc.lenovo.service.MainActivity">
+
+    <Button
+        android:id="@+id/start_service_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="startService"/>
+
+    <Button
+        android:id="@+id/stop_service_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="stopService"/>
+
+    <Button
+        android:id="@+id/bind_service_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="bindService"/>
+
+    <Button
+        android:id="@+id/unbind_service_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="unbindService"/>
+
+    <Button
+        android:id="@+id/play_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="开始"/>
+    <Button
+        android:id="@+id/pause_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="暂停"/>
+
+
+    <Button
+        android:id="@+id/previous_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="上一曲"/>
+
+    <Button
+        android:id="@+id/next_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="下一曲"/>
+
+</LinearLayout>
