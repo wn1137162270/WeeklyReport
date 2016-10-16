@@ -1,6 +1,9 @@
 package com.example.lenovo.myapplication;
 
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -13,6 +16,7 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.TintContextWrapper;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.KeyEvent;
@@ -26,6 +30,7 @@ import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.sql.Time;
 import java.util.HashMap;
 import java.util.List;
 
@@ -67,6 +72,7 @@ public class MainActivity extends Activity{
     public static final String MUSIC_DURATION = "com.wwj.action.MUSIC_DURATION";
     public static final String REPEAT_ACTION = "com.wwj.action.REPEAT_ACTION";
     public static final String SHUFFLE_ACTION = "com.wwj.action.SHUFFLE_ACTION";
+    public static final String MUSIC_PAUSE = "com.wwj.action.MUSIC_PAUSE";
 
     public MainActivity() {
     }
@@ -84,6 +90,7 @@ public class MainActivity extends Activity{
         setFindViewById();
         setMyOnClickListener();
         setListAdapter(MediaUtil.getSongsMap(allSongs));
+        setStartNotification();
         repeatState=isNoneRepeat;
 
         IntentFilter intentFilter=new IntentFilter();
@@ -117,6 +124,22 @@ public class MainActivity extends Activity{
         musicPlaying.setOnClickListener(myOnClickListener);
     }
 
+    public void setStartNotification(){
+        int notificationId=0;
+        NotificationManager notificationManager= (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        Intent intent=new Intent(this,MainActivity.class);
+        PendingIntent pendingIntent=PendingIntent.getActivity(this,0,intent,0);
+        Notification.Builder builder=new Notification.Builder(this);
+        builder.setSmallIcon(R.drawable.ic_launcher);
+        builder.setTicker("音乐，听出大千世界");
+        builder.setContentTitle("音乐");
+        builder.setContentText("听出大千世界");
+        builder.setWhen(System.currentTimeMillis());
+        builder.setContentIntent(pendingIntent);
+        Notification notification=builder.build();
+        notificationManager.notify(notificationId,notification);
+    }
+
     public class MyOnClickListener implements View.OnClickListener{
         Intent intent=new Intent();
 
@@ -131,7 +154,6 @@ public class MainActivity extends Activity{
                     isFirstTime=false;
                     break;
                 case R.id.repeat_music:
-                    Log.d("msg","单曲循环");
                     if(repeatState==isNoneRepeat){
                         musicShuffle.setClickable(false);
                         musicRepeat.setBackgroundResource(R.drawable.repeat_music_on);
@@ -140,7 +162,6 @@ public class MainActivity extends Activity{
                         Toast.makeText(MainActivity.this,"单曲循环",Toast.LENGTH_SHORT).show();
                     }
                     else if(repeatState==isOneRepeat){
-                        Log.d("msg","全部歌曲循环");
                         musicShuffle.setClickable(false);
                         musicRepeat.setBackgroundResource(R.drawable.repeat_music);
                         repeatAll();
@@ -148,7 +169,6 @@ public class MainActivity extends Activity{
                         Toast.makeText(MainActivity.this,"全部歌曲循环",Toast.LENGTH_SHORT).show();
                     }
                     else if(repeatState==isAllRepeat){
-                        Log.d("msg","循环停止");
                         musicShuffle.setClickable(true);
                         musicRepeat.setBackgroundResource(R.drawable.repeat_music_off);
                         repeatNone();
@@ -169,6 +189,8 @@ public class MainActivity extends Activity{
                         if(isPlaying){
                             musicPause.setBackgroundResource(R.drawable.start_selector);
                             intent.setAction("com.wwj.media.MUSIC_SERVICE");
+                            intent.putExtra("listPosition", listPosition);
+                            intent.putExtra("url",allSongs.get(listPosition).getUrl());
                             intent.putExtra("MSG", AppConstant.PlayerMsg.PAUSE_MSG);
                             startService(intent);
                             isPlaying=false;
@@ -177,6 +199,8 @@ public class MainActivity extends Activity{
                         else if(isPause){
                             musicPause.setBackgroundResource(R.drawable.pause_selector);
                             intent.setAction("com.wwj.media.MUSIC_SERVICE");
+                            intent.putExtra("listPosition", listPosition);
+                            intent.putExtra("url",allSongs.get(listPosition).getUrl());
                             intent.putExtra("MSG", AppConstant.PlayerMsg.CONTINUE_MSG);
                             startService(intent);
                             isPlaying=true;
@@ -219,7 +243,12 @@ public class MainActivity extends Activity{
                     intent.putExtra("currentTime", currentTime);
                     intent.putExtra("repeatState", repeatState);
                     intent.putExtra("duration",duration);
-                    intent.putExtra("MSG", AppConstant.PlayerMsg.PLAYING_MSG);
+                    if(isPlaying) {
+                        intent.putExtra("MSG", AppConstant.PlayerMsg.PLAYING_MSG);
+                    }
+                    else if(isPause){
+                        intent.putExtra("MSG", AppConstant.PlayerMsg.PLAYING_MSG_PAUSE);
+                    }
                     startActivity(intent);
                     break;
             }
@@ -326,7 +355,6 @@ public class MainActivity extends Activity{
 
     public void playMusic(int listPosition){
         if(allSongs!=null){
-
             Music song=allSongs.get(listPosition);
             musicName.setText(song.getName());
             Intent intent=new Intent(MainActivity.this,PlayerActivity.class);
@@ -353,6 +381,7 @@ public class MainActivity extends Activity{
 
     @Override
     protected void onDestroy() {
+        unregisterReceiver(mainReceiver);
         super.onDestroy();
     }
 
@@ -412,7 +441,7 @@ public class MainActivity extends Activity{
                         break;
                 }
             }
-            else{
+            else if(action.equals(SHUFFLE_ACTION)){
                 isShuffle=intent.getBooleanExtra("shuffleState",false);
                 if(isShuffle){
                     musicShuffle.setBackgroundResource(R.drawable.shuffle_music_on);
@@ -423,6 +452,13 @@ public class MainActivity extends Activity{
                     musicShuffle.setBackgroundResource(R.drawable.shuffle_music_off);
                     musicRepeat.setClickable(true);
                     isNoneShuffle=true;
+                }
+            }
+            else if(action.equals(MUSIC_PAUSE)){
+                isPause=intent.getBooleanExtra("isPause",false);
+                if(isPause){
+                    isPlaying=false;
+                    musicPause.setBackgroundResource(R.drawable.start_selector);
                 }
             }
         }

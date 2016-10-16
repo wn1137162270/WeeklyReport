@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.SeekBar;
@@ -21,15 +22,13 @@ import static android.widget.Toast.LENGTH_SHORT;
  * Created by Lenovo on 2016/10/4.
  */
 
-public class PlayerActivity extends Activity{
+public class PlayerActivity extends Activity {
 
     private Button musicPrevious;
     private Button musicRepeat;
     private Button musicPause;
     private Button musicShuffle;
     private Button musicNext;
-    private Button musicSearch;
-    private Button musicQueue;
     private TextView musicName=null;
     private TextView musicSinger=null;
     private SeekBar progressBar;
@@ -61,12 +60,12 @@ public class PlayerActivity extends Activity{
     public static final String MUSIC_PLAYING = "com.wwj.action.MUSIC_PLAYING";
     public static final String REPEAT_ACTION = "com.wwj.action.REPEAT_ACTION";
     public static final String SHUFFLE_ACTION = "com.wwj.action.SHUFFLE_ACTION";
+    public static final String MUSIC_PAUSE = "com.wwj.action.MUSIC_PAUSE";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.music_braodcast_now);
-
 
         setFindViewById();
         setMyOnClickListener();
@@ -85,8 +84,6 @@ public class PlayerActivity extends Activity{
         musicPause= (Button) findViewById(R.id.pause_music);
         musicShuffle= (Button) findViewById(R.id.shuffle_music);
         musicNext= (Button) findViewById(R.id.next_music);
-        musicSearch= (Button) findViewById(R.id.search_music);
-        musicQueue= (Button) findViewById(R.id.music_queue);
         musicName= (TextView) findViewById(R.id.music_name03);
         musicSinger=(TextView) findViewById(R.id.music_singer03);
         progressBar= (SeekBar) findViewById(R.id.progress_bar);
@@ -101,8 +98,6 @@ public class PlayerActivity extends Activity{
         musicPause.setOnClickListener(myOnClickListener);
         musicShuffle.setOnClickListener(myOnClickListener);
         musicNext.setOnClickListener(myOnClickListener);
-        musicQueue.setOnClickListener(myOnClickListener);
-        musicSearch.setOnClickListener(myOnClickListener);
         progressBar.setOnSeekBarChangeListener(new MyOnSeekBarChangeListener());
     }
 
@@ -128,40 +123,62 @@ public class PlayerActivity extends Activity{
         musicSinger.setText(singer);
         progressBar.setProgress(currentTime);
         progressBar.setMax(duration);
-        Log.i("msg",String.valueOf(repeatState));
         switch (repeatState) {
             case isOneRepeat:
                 musicShuffle.setClickable(false);
                 musicRepeat.setBackgroundResource(R.drawable.repeat_music_on);
+                musicPause.setBackgroundResource(R.drawable.pause_selector);
+                isPlaying=true;
+                isPause=false;
                 break;
             case isAllRepeat:
                 musicShuffle.setClickable(false);
                 musicRepeat.setBackgroundResource(R.drawable.repeat_music);
+                musicPause.setBackgroundResource(R.drawable.pause_selector);
+                isPlaying=true;
+                isPause=false;
                 break;
             case isNoneRepeat:
                 musicShuffle.setClickable(true);
                 musicRepeat.setBackgroundResource(R.drawable.repeat_music_off);
+                musicPause.setBackgroundResource(R.drawable.pause_selector);
+                isPlaying=true;
+                isPause=false;
                 break;
         }
         if(isShuffle){
             isNoneShuffle=false;
             musicRepeat.setClickable(false);
             musicShuffle.setBackgroundResource(R.drawable.shuffle_music_on);
+            musicPause.setBackgroundResource(R.drawable.pause_selector);
+            isPlaying=true;
+            isPause=false;
         }
         else{
             isNoneShuffle=true;
             musicRepeat.setClickable(true);
             musicShuffle.setBackgroundResource(R.drawable.shuffle_music_off);
+            musicPause.setBackgroundResource(R.drawable.pause_selector);
+            isPlaying=true;
+            isPause=false;
         }
         if(flag==AppConstant.PlayerMsg.PLAY_MSG){
             play();
+            musicPause.setBackgroundResource(R.drawable.pause_selector);
+            isPlaying=true;
+            isPause=false;
         }
         else if(flag==AppConstant.PlayerMsg.PLAYING_MSG){
+            musicPause.setBackgroundResource(R.drawable.pause_selector);
+            isPlaying=true;
+            isPause=false;
             Toast.makeText(PlayerActivity.this,"正在播放"+name+"...",LENGTH_SHORT).show();
         }
-        musicPause.setBackgroundResource(R.drawable.pause_selector);
-        isPlaying=true;
-        isPause=false;
+        else if(flag==AppConstant.PlayerMsg.PLAYING_MSG_PAUSE){
+            musicPause.setBackgroundResource(R.drawable.start_selector);
+            isPlaying=false;
+            isPause=true;
+        }
     }
 
     public class MyOnClickListener implements View.OnClickListener{
@@ -209,6 +226,8 @@ public class PlayerActivity extends Activity{
                     if(isPlaying){
                         musicPause.setBackgroundResource(R.drawable.start_selector);
                         intent.setAction("com.wwj.media.MUSIC_SERVICE");
+                        intent.putExtra("listPosition", listPosition);
+                        intent.putExtra("url",songs.get(listPosition).getUrl());
                         intent.putExtra("MSG", AppConstant.PlayerMsg.PAUSE_MSG);
                         startService(intent);
                         isPlaying=false;
@@ -217,6 +236,8 @@ public class PlayerActivity extends Activity{
                     else if(isPause) {
                         musicPause.setBackgroundResource(R.drawable.pause_selector);
                         intent.setAction("com.wwj.media.MUSIC_SERVICE");
+                        intent.putExtra("listPosition", listPosition);
+                        intent.putExtra("url",songs.get(listPosition).getUrl());
                         intent.putExtra("MSG", AppConstant.PlayerMsg.CONTINUE_MSG);
                         startService(intent);
                         isPlaying = true;
@@ -277,7 +298,23 @@ public class PlayerActivity extends Activity{
 
     @Override
     protected void onDestroy() {
+        unregisterReceiver(playerReceiver);
         super.onDestroy();
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if(keyCode==KeyEvent.KEYCODE_BACK&&event.getAction()==KeyEvent.ACTION_DOWN){
+            Intent intent=new Intent(MUSIC_PAUSE);
+            if(isPlaying) {
+                intent.putExtra("isPause", false);
+            }
+            else if(isPause){
+                intent.putExtra("isPause",true);
+            }
+            sendBroadcast(intent);
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
     public void play(){
@@ -344,12 +381,12 @@ public class PlayerActivity extends Activity{
             Intent intent = new Intent();
             intent.setAction("com.wwj.media.MUSIC_SERVICE");
             intent.putExtra("listPosition", listPosition);
-            intent.putExtra("url", song.getUrl());
+            intent.putExtra("url",url);
             intent.putExtra("MSG", AppConstant.PlayerMsg.NEXT_MSG);
             startService(intent);
         }
         else{
-            listPosition=listPosition+1;
+            listPosition=listPosition-1;
             Toast.makeText(PlayerActivity.this,"没有下一首了", LENGTH_SHORT).show();
         }
     }
@@ -359,11 +396,11 @@ public class PlayerActivity extends Activity{
         intent.setAction("com.wwj.media.MUSIC_SERVICE");
         intent.putExtra("url", url);
         intent.putExtra("listPosition", listPosition);
-        if(isPause) {
-            intent.putExtra("MSG", AppConstant.PlayerMsg.PAUSE_MSG);
+        if(isPause){
+            intent.putExtra("MSG",AppConstant.PlayerMsg.PROGRESS_CHANGE_PAUSE);
         }
-        else {
-            intent.putExtra("MSG", AppConstant.PlayerMsg.PROGRESS_CHANGE);
+        else{
+            intent.putExtra("MSG",AppConstant.PlayerMsg.PROGRESS_CHANGE);
         }
         intent.putExtra("progress", progress);
         startService(intent);

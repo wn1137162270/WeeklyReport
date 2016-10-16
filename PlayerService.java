@@ -1,5 +1,8 @@
 package com.example.lenovo.myapplication;
 
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -29,6 +32,8 @@ public class PlayerService extends Service {
     private MyReceiver myReceiver;
     private int currentTime;
     private int duration;
+    private int notificationId=0;
+    NotificationManager notificationManager;
 
     public static final String UPDATE_ACTION = "com.wwj.action.UPDATE_ACTION";
     public static final String CTL_ACTION = "com.wwj.action.CTL_ACTION";
@@ -53,8 +58,6 @@ public class PlayerService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.d("service", "service created");
-        Log.d("msg","service created");
 
         mediaPlayer = new MediaPlayer();
         songs = MediaUtil.getSongs(PlayerService.this);
@@ -89,10 +92,11 @@ public class PlayerService extends Service {
                         Intent sendIntent = new Intent(UPDATE_ACTION);
                         sendIntent.putExtra("current", current);
                         sendBroadcast(sendIntent);
+                        path = songs.get(current).getUrl();
+                        play(0);
                     }
                 } else if(status == 4) {
                     current = getRandomIndex(songs.size() - 1);
-                    System.out.println("currentIndex ->" + current);
                     Intent sendIntent = new Intent(UPDATE_ACTION);
                     sendIntent.putExtra("current", current);
                     sendBroadcast(sendIntent);
@@ -104,9 +108,38 @@ public class PlayerService extends Service {
 
         myReceiver = new MyReceiver();
         IntentFilter filter = new IntentFilter();
-        filter.addAction(PlayerActivity.CTL_ACTION);
+        filter.addAction(CTL_ACTION);
         registerReceiver(myReceiver, filter);
+
     }
+
+    public void setPlayNotification(){
+        notificationManager= (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        Intent intent=new Intent(this,MainActivity.class);
+        PendingIntent pendingIntent=PendingIntent.getActivity(this,0,intent,0);
+        Notification.Builder builder=new Notification.Builder(this);
+        builder.setSmallIcon(R.drawable.ic_launcher);
+        builder.setContentTitle(songs.get(current).getName());
+        builder.setContentText("正在播放...");
+        builder.setWhen(System.currentTimeMillis());
+        builder.setContentIntent(pendingIntent);
+        Notification notification=builder.build();
+        notificationManager.notify(notificationId,notification);
+    }
+
+    public void setPauseNotification(){
+        Intent intent=new Intent(this,MainActivity.class);
+        PendingIntent pendingIntent=PendingIntent.getActivity(this,0,intent,0);
+        Notification.Builder builder=new Notification.Builder(this);
+        builder.setSmallIcon(R.drawable.ic_launcher);
+        builder.setContentTitle(songs.get(current).getName());
+        builder.setContentText("暂停");
+        builder.setWhen(System.currentTimeMillis());
+        builder.setContentIntent(pendingIntent);
+        Notification notification=builder.build();
+        notificationManager.notify(notificationId,notification);
+    }
+
 
     protected int getRandomIndex(int end) {
         int index = (int) (Math.random() * end);
@@ -118,38 +151,40 @@ public class PlayerService extends Service {
         return null;
     }
 
-    /*@Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        return super.onStartCommand(intent, flags, startId);
-    }*/
-
-    @Override
-    public void onStart(Intent intent, int startId) {
-        path = intent.getStringExtra("url");        //歌曲路径
-        current = intent.getIntExtra("listPosition", -1);   //当前播放歌曲的在mp3Infos的位置
-        msg = intent.getIntExtra("MSG", 0);         //播放信息
-        if (msg == AppConstant.PlayerMsg.PLAY_MSG) {    //直接播放音乐
+        path = intent.getStringExtra("url");
+        current = intent.getIntExtra("listPosition", -1);
+        msg = intent.getIntExtra("MSG", 0);
+        if (msg == AppConstant.PlayerMsg.PLAY_MSG) {
             play(0);
-        } else if (msg == AppConstant.PlayerMsg.PAUSE_MSG) {    //暂停
+        } else if (msg == AppConstant.PlayerMsg.PAUSE_MSG) {
             pause();
-        } else if (msg == AppConstant.PlayerMsg.STOP_MSG) {     //停止
+        } else if (msg == AppConstant.PlayerMsg.STOP_MSG) {
             stop();
-        } else if (msg == AppConstant.PlayerMsg.CONTINUE_MSG) { //继续播放
+        } else if (msg == AppConstant.PlayerMsg.CONTINUE_MSG) {
             resume();
-        } else if (msg == AppConstant.PlayerMsg.PREVIOUS_MSG) { //上一首
+        } else if (msg == AppConstant.PlayerMsg.PREVIOUS_MSG) {
             previous();
-        } else if (msg == AppConstant.PlayerMsg.NEXT_MSG) {     //下一首
+        } else if (msg == AppConstant.PlayerMsg.NEXT_MSG) {
             next();
-        } else if (msg == AppConstant.PlayerMsg.PROGRESS_CHANGE) {  //进度更新
+        } else if (msg == AppConstant.PlayerMsg.PROGRESS_CHANGE) {
             currentTime = intent.getIntExtra("progress", -1);
             play(currentTime);
+        } else if (msg == AppConstant.PlayerMsg.PROGRESS_CHANGE_PAUSE) {
+            currentTime = intent.getIntExtra("progress", -1);
+            mediaPlayer.seekTo(currentTime);
+            pause();
         } else if (msg == AppConstant.PlayerMsg.PLAYING_MSG) {
             handler.sendEmptyMessage(1);
         }
-        super.onStart(intent, startId);
+        return super.onStartCommand(intent, flags, startId);
     }
 
     private void play(int currentTime) {
+        setPlayNotification();
+        Intent sendIntent = new Intent(UPDATE_ACTION);
+        sendIntent.putExtra("current", current);
+        sendBroadcast(sendIntent);
         try {
             mediaPlayer.reset();
             mediaPlayer.setDataSource(path);
@@ -162,6 +197,10 @@ public class PlayerService extends Service {
     }
 
     private void pause() {
+        setPauseNotification();
+        Intent sendIntent = new Intent(UPDATE_ACTION);
+        sendIntent.putExtra("current", current);
+        sendBroadcast(sendIntent);
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
             isPause = true;
@@ -170,6 +209,10 @@ public class PlayerService extends Service {
 
     private void resume() {
         if (isPause) {
+            setPlayNotification();
+            Intent sendIntent = new Intent(UPDATE_ACTION);
+            sendIntent.putExtra("current", current);
+            sendBroadcast(sendIntent);
             mediaPlayer.start();
             isPause = false;
         }
@@ -185,7 +228,6 @@ public class PlayerService extends Service {
     private void next() {
         Intent sendIntent = new Intent(UPDATE_ACTION);
         sendIntent.putExtra("current", current);
-        // 发送广播，将被Activity组件中的BroadcastReceiver接收到
         sendBroadcast(sendIntent);
         play(0);
     }
