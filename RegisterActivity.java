@@ -1,4 +1,4 @@
-package myapp.lenovo.ocr;
+package myapp.lenovo.ocr2;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -52,8 +52,7 @@ public class RegisterActivity extends Activity {
                 case R.id.confirm_btn:
                     String registerAccount = account.getText().toString().trim();
                     String registerPassword = password.getText().toString().trim();
-                    intentDbs=new Intent();
-                    intentDbs.setAction("DatabaseService");
+                    intentDbs=new Intent(RegisterActivity.this,DatabaseService.class);
                     intentDbs.putExtra("registerAccount", registerAccount);
                     intentDbs.putExtra("registerPassword", registerPassword);
                     startService(intentDbs);

@@ -1,15 +1,12 @@
-package myapp.lenovo.ocr;
+package myapp.lenovo.ocr2;
 
 import android.app.Service;
 import android.content.ContentValues;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
-import android.widget.Toast;
 
 public class DatabaseService extends Service {
     private SQLiteDatabase db;
